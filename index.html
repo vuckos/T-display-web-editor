@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="coloris.min.css"/>
+</head>
+<body>
+
+    <h1>This is a heading</h1>
+    <p>This is a paragraph.</p>
+    
+    <div>
+        <canvas class="canvas" id="myCanvas" width="320" height="170"></canvas>
+    </div>
+    
+    <div>
+        <select class="select_screen" id="dropdown"> </select>
+    </div>
+
+    <div>
+        <select class="select_cell" id="dropdown_cell"> </select>
+    </div>
+
+    <div id="cellDetails"></div>
+    <button id="saveButton">Save</button>
+
+
+    <script src="config.json"></script>
+    <script src="coloris.min.js"></script>
+
+
+
+
+    <script>
+        // Your JavaScript code here
+
+
+        Coloris({
+            themeMode: 'dark',
+            alpha: false
+        });
+
+
+
+
+    const canvasEl = document.getElementById('myCanvas');
+    canvasEl.addEventListener('click', (e) => {
+        const rect = canvasEl.getBoundingClientRect();
+        const x = Math.round(e.clientX - rect.left);
+        const y = Math.round(e.clientY - rect.top);
+        console.log('myCanvas click at', x, y);
+        // // Optional: dispatch custom event with coordinates
+        // canvasEl.dispatchEvent(new CustomEvent('canvas-click', { detail: { x, y } }));
+    });
+
+    // load config into a global so click handler can access it
+    let __configData = null;
+    fetch('config.json')
+        .then(r => r.json())
+        .then(d => { __configData = d; })
+        .catch(() => { __configData = null; });
+
+    // determine which cell was clicked and select it in the UI
+    canvasEl.addEventListener('click', (e) => {
+        const rect = canvasEl.getBoundingClientRect();
+        const x = Math.round(e.clientX - rect.left);
+        const y = Math.round(e.clientY - rect.top);
+
+        if (!__configData) {
+            console.log('config not loaded yet');
+            return;
+        }
+
+        const screenSelect = document.getElementById('dropdown');
+        const screenKey = screenSelect.value;
+        const cells = __configData[screenKey] || [];
+
+        const hitIndex = cells.findIndex(cell => {
+            const px = parseInt(cell.posx, 10) || 0;
+            const py = parseInt(cell.posy, 10) || 0;
+            const w  = parseInt(cell.sizex, 10) || 0;
+            const h  = parseInt(cell.sizey, 10) || 0;
+            return x >= px && x <= px + w && y >= py && y <= py + h;
+        });
+
+        if (hitIndex >= 0) {
+            console.log('Clicked cell index', hitIndex, cells[hitIndex]);
+            const dropdownCell = document.getElementById('dropdown_cell');
+            dropdownCell.value = hitIndex;
+            // trigger the existing change handler to highlight and show inputs
+            dropdownCell.dispatchEvent(new Event('change'));
+        } else {
+            console.log('No cell at', x, y);
+        }
+    });
+
+
+    // Wait until __configData is available, then initialize UI/canvas using it
+    function waitForConfig(timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            if (window.__configData) return resolve(window.__configData);
+            const interval = 100;
+            let waited = 0;
+            const id = setInterval(() => {
+                if (window.__configData) {
+                    clearInterval(id);
+                    return resolve(window.__configData);
+                }
+                waited += interval;
+                if (waited >= timeout) {
+                    clearInterval(id);
+                    return reject(new Error('Timed out waiting for __configData'));
+                }
+            }, interval);
+        });
+    }
+
+    waitForConfig()
+        .then(data => {
+            const canvas = document.getElementById('myCanvas');
+            const context = canvas.getContext('2d');
+
+            function redrawScreen(screenKey) {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                const screenData = data[screenKey] || [];
+                screenData.forEach(cell => {
+                    const px = parseInt(cell.posx, 10) || 0;
+                    const py = parseInt(cell.posy, 10) || 0;
+                    const w  = parseInt(cell.sizex, 10) || 0;
+                    const h  = parseInt(cell.sizey, 10) || 0;
+                    const bg = parseInt(cell.bg_color, 16) || 0;
+                    const fg = parseInt(cell.font1_color, 16) || 0;
+                    const rgbBg = rgb565ToRgb888(bg).toString(16).padStart(6, '0');
+                    const rgbFg = rgb565ToRgb888(fg).toString(16).padStart(6, '0');
+                    context.fillStyle = '#' + rgbBg;
+                    context.fillRect(px, py, w, h);
+                    context.fillStyle = '#' + rgbFg;
+                    context.fillText(cell.name || '', px + 5, py + 10);
+                });
+            }
+
+            // populate screen dropdown
+            const screenKeys = Object.keys(data).filter(k => k.startsWith('SCREEN_'));
+            const dropdown = document.getElementById('dropdown');
+            dropdown.innerHTML = '';
+            screenKeys.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.text = k;
+                dropdown.appendChild(opt);
+            });
+            const defaultKey = screenKeys[0] || '';
+
+            // populate cells for a screen
+            function populateCellsFor(screenKey) {
+                const selectedData = data[screenKey] || [];
+                const dropdownCell = document.getElementById('dropdown_cell');
+                dropdownCell.innerHTML = '';
+                selectedData.forEach((cell, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.text = cell.name || `Cell ${idx + 1}`;
+                    dropdownCell.appendChild(opt);
+                });
+                redrawScreen(screenKey);
+            }
+
+            // screen change handler
+            dropdown.addEventListener('change', () => {
+                const key = dropdown.value;
+                populateCellsFor(key);
+            });
+
+            // cell change handler
+            const dropdownCell = document.getElementById('dropdown_cell');
+            dropdownCell.addEventListener('change', () => {
+                const screenKey = dropdown.value;
+                const selectedData = data[screenKey] || [];
+                const selectedIndex = parseInt(dropdownCell.value, 10);
+                // redraw all boxes
+                redrawScreen(screenKey);
+
+                // dim non-selected and highlight selected cell area
+                selectedData.forEach((cell, idx) => {
+                    const x = parseInt(cell.posx, 10) || 0;
+                    const y = parseInt(cell.posy, 10) || 0;
+                    const w = parseInt(cell.sizex, 10) || 0;
+                    const h = parseInt(cell.sizey, 10) || 0;
+                    if (idx !== selectedIndex) {
+                        context.save();
+                        context.globalAlpha = 0.7;
+                        context.fillStyle = 'black';
+                        context.fillRect(x, y, w, h);
+                        context.restore();
+                    } else {
+                        context.strokeStyle = 'red';
+                        context.lineWidth = 2;
+                        context.strokeRect(x + 1, y + 1, w - 2, h - 2);
+                    }
+                });
+
+                // build input fields for the selected cell
+                const selectedCell = selectedData[selectedIndex];
+                const cellDetails = document.getElementById('cellDetails');
+                cellDetails.innerHTML = '';
+                if (!selectedCell) return;
+                Object.keys(selectedCell).forEach(key => {
+                    const label = document.createElement('label');
+                    label.htmlFor = key;
+                    label.innerText = key;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = key;
+                    input.value = selectedCell[key];
+                    if (key.includes('_color')) input.setAttribute('data-coloris', '');
+                    cellDetails.appendChild(label);
+                    cellDetails.appendChild(input);
+                    cellDetails.appendChild(document.createElement('br'));
+                });
+            });
+
+            // save button behavior
+            const saveButton = document.getElementById('saveButton');
+            saveButton.addEventListener('click', () => {
+                const screenKey = dropdown.value;
+                const selectedData = data[screenKey] || [];
+                const selectedIndex = parseInt(dropdownCell.value, 10);
+                const selectedCell = selectedData[selectedIndex];
+                if (!selectedCell) return;
+                Object.keys(selectedCell).forEach(key => {
+                    const input = document.getElementById(key);
+                    if (input) selectedCell[key] = input.value;
+                });
+                const editedConfig = JSON.stringify(data, null, 2);
+                const blob = new Blob([editedConfig], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'edited_config.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // set default and trigger initial population
+            if (defaultKey) {
+                dropdown.value = defaultKey;
+                populateCellsFor(defaultKey);
+                // select first cell if present
+                const dc = document.getElementById('dropdown_cell');
+                if (dc && dc.options.length) {
+                    dc.value = 0;
+                    dc.dispatchEvent(new Event('change'));
+                }
+            }
+        })
+        .catch(err => console.log('Error initializing from __configData:', err));
+        
+        fetch('config.json')
+        .then(response => response.json())
+        .then(data => {
+            const canvas = document.getElementById('myCanvas');
+            const context = canvas.getContext('2d');
+
+            // Clear the canvas before drawing new boxes
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Search for keys starting with "SCREEN_"
+            const screenKeys = Object.keys(data).filter(key => key.startsWith('SCREEN_'));
+
+            // Set the default key to be the first key in the list
+            const defaultKey = screenKeys[0];
+
+            // Create a dropdown list from the found keys
+            const dropdown = document.getElementById('dropdown');
+            screenKeys.forEach(key => {
+                const option = document.createElement('option');
+                option.value = key;
+                option.text = key;
+                dropdown.appendChild(option);
+            });
+
+            // Handle dropdown selection change event
+            dropdown.addEventListener('change', () => {
+                console.log('SCREEN change');
+                const selectedKey = dropdown.value;
+                const selectedData = data[selectedKey];
+
+                // Clear the canvas before drawing new boxes
+                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Populate the second dropdown with keys from the selected screenKey
+                const dropdownCell = document.getElementById('dropdown_cell');
+                dropdownCell.innerHTML = ''; // Clear previous options
+                selectedData.forEach((cell, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.text = cell.name || `Cell ${index + 1}`;
+                    dropdownCell.appendChild(option);
+                });
+
+                // Draw the boxes for the selected screenKey
+                selectedData.forEach(cell => {
+                    const { sizex, sizey, posx, posy, bg_color, name, font1_color } = cell;
+
+                    // Draw a rectangle with the given dimensions and background color
+                    let rgb888_bg = rgb565ToRgb888(parseInt(bg_color, 16));
+                    context.fillStyle = "#" + rgb888_bg.toString(16);
+                    context.fillRect(posx, posy, sizex, sizey);
+
+                    // Draw the text inside the box
+                    let rgb888_font = rgb565ToRgb888(parseInt(font1_color, 16));
+                    context.strokeStyle = "#" + rgb888_font.toString(16);
+                    context.strokeText(name, parseInt(posx) + 5, parseInt(posy) + 10);
+                });
+            });
+
+            // Handle cell dropdown selection change event
+            const dropdownCell = document.getElementById('dropdown_cell');
+            dropdownCell.addEventListener('change', () => {
+                console.log('cell change');
+                const selectedKey = dropdown.value;
+                const selectedData = data[selectedKey];
+                const selectedIndex = dropdownCell.value;
+                const selectedCell = selectedData[selectedIndex];
+
+                // Clear the canvas before redrawing
+                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Redraw all the boxes for the selected screenKey
+                selectedData.forEach(cell => {
+                    const { sizex, sizey, posx, posy, bg_color, name, font1_color } = cell;
+
+                    // Draw a rectangle with the given dimensions and background color
+                    let rgb888_bg = rgb565ToRgb888(parseInt(bg_color, 16));
+                    context.fillStyle = "#" + rgb888_bg.toString(16);
+                    context.fillRect(posx, posy, sizex, sizey);
+
+                    // Draw the text inside the box
+                    let rgb888_font = rgb565ToRgb888(parseInt(font1_color, 16));
+                    context.strokeStyle = "#" + rgb888_font.toString(16);
+                    context.strokeText(name, parseInt(posx) + 5, parseInt(posy) + 10);
+                });
+
+                // Dim all other cells and highlight the selected one
+                selectedData.forEach((cell, idx) => {
+                    const { posx, posy, sizex, sizey } = cell;
+                    const x = parseInt(posx), y = parseInt(posy), w = parseInt(sizex), h = parseInt(sizey);
+
+                    if (idx !== parseInt(dropdown_cell.value)) {
+                        context.save();
+                        context.globalAlpha = 0.8 ; // Dim other cells
+                        context.fillStyle = 'black';
+                        context.fillRect(x, y, w, h);
+                        context.restore();
+                    } 
+                    //else {
+                    //    context.strokeStyle = 'red';
+                    //    context.lineWidth = 0;
+                    //    context.strokeRect(x, y, w, h);
+                    //}
+                });
+
+                // Create input boxes for each key in the selected cell
+                const cellDetails = document.getElementById('cellDetails');
+                cellDetails.innerHTML = ''; // Clear previous inputs
+                Object.keys(selectedCell).forEach(key => {
+                    const input = document.createElement('input');
+                    input.setAttribute('type', 'text');
+                    
+                    //if (key === 'enabled') {
+                    //    const listId = `enabled-options-${key}`;
+                    //    input.setAttribute('list', listId);
+                    //    const datalist = document.createElement('datalist');
+                    //    datalist.id = listId;
+                    //    ['true', 'false'].forEach(val => {
+                    //        const opt = document.createElement('option');
+                    //        opt.value = val;
+                    //        datalist.appendChild(opt);
+                    //    });
+                    //    cellDetails.appendChild(datalist);
+                    //}
+
+                    if (key.includes('_color')) {
+                        input.setAttribute('data-coloris', '');
+                    }
+                    //input.type = 'text';
+                    input.id = key;
+                    console.log(`Creating input for ${key} with value: ${selectedCell[key]}`);
+                    input.value = selectedCell[key];
+                    const label = document.createElement('label');
+                    label.htmlFor = key;
+                    label.innerText = key;
+                    cellDetails.appendChild(label);
+                    cellDetails.appendChild(input);
+                    cellDetails.appendChild(document.createElement('br'));
+                });
+            });
+
+            // Handle save button click event
+            const saveButton = document.getElementById('saveButton');
+            saveButton.addEventListener('click', () => {
+                const selectedKey = dropdown.value;
+                const selectedData = data[selectedKey];
+                const selectedIndex = dropdownCell.value;
+                const selectedCell = selectedData[selectedIndex];
+
+                // Update the selected cell with new values from input boxes
+                Object.keys(selectedCell).forEach(key => {
+                    const input = document.getElementById(key);
+                    selectedCell[key] = input.value;
+                });
+
+                // Save the edited configuration to edited_config.json
+                const editedConfig = JSON.stringify(data, null, 2);
+                const blob = new Blob([editedConfig], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'edited_config.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // Set the dropdown to the default value and trigger the change event
+            dropdown.value = defaultKey;
+            dropdown.dispatchEvent(new Event('change'));
+        })
+        .catch(error => console.log('Error:', error));
+
+
+       
+
+
+        function rgb565ToRgb888(rgb565) {
+            let r = ((rgb565 >> 11) & 0x1F) << 3;
+            let g = ((rgb565 >> 5) & 0x3F) << 2;
+            let b = (rgb565 & 0x1F) << 3;
+
+            r = r + (r >> 5); // rounding
+            g = g + (g >> 6);
+            b = b + (b >> 5);
+
+            return (r << 16) | (g << 8) | b;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

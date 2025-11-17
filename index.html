@@ -278,8 +278,8 @@
                             <div class="settings-field">
                                 <label for="lcd_brightness_type">Type</label>
                                 <select id="lcd_brightness_type" name="LCD_BRIGHTNESS.type" class="settings-select">
-                                    <option value="Manual">Manual</option>
-                                    <option value="Auto">Auto</option>
+                                    <option value="MANUAL">Manual</option>
+                                    <option value="AUTO">Auto</option>
                                 </select>
                             </div>
                             <div class="settings-field">
@@ -298,6 +298,50 @@
                                         </svg>
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WIFI Section -->
+                    <div class="settings-group">
+                        <h3 class="settings-group-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M5 12.55a11 11 0 0 1 14.08 0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M1.42 9a16 16 0 0 1 21.16 0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8.53 16.11a6 6 0 0 1 6.95 0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="12" cy="20" r="1" stroke-width="2"/>
+                            </svg>
+                            WiFi Configuration
+                        </h3>
+                        <div class="settings-fields">
+                            <div class="settings-field">
+                                <label for="wifi_mode">Mode</label>
+                                <select id="wifi_mode" name="WIFI.mode" class="settings-select">
+                                    <option value="STA">STA (Client)</option>
+                                    <option value="AP">AP (Access Point)</option>
+                                    <option value="AP+STA">AP+STA (Both)</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+                            </div>
+                            <div class="settings-field">
+                                <label for="wifi_ssid">SSID</label>
+                                <input type="text" id="wifi_ssid" name="WIFI.ssid" class="settings-input" placeholder="WiFi network name" />
+                            </div>
+                            <div class="settings-field">
+                                <label for="wifi_password">Password</label>
+                                <input type="password" id="wifi_password" name="WIFI.password" class="settings-input" placeholder="WiFi password" />
+                            </div>
+                            <div class="settings-field">
+                                <label for="wifi_mdns">mDNS Hostname</label>
+                                <input type="text" id="wifi_mdns" name="WIFI.mdns" class="settings-input" placeholder="hostname" />
+                            </div>
+                            <div class="settings-field">
+                                <label for="wifi_ap_ssid">AP SSID</label>
+                                <input type="text" id="wifi_ap_ssid" name="WIFI.ap_ssid" class="settings-input" placeholder="Access Point name" />
+                            </div>
+                            <div class="settings-field">
+                                <label for="wifi_ap_password">AP Password</label>
+                                <input type="password" id="wifi_ap_password" name="WIFI.ap_password" class="settings-input" placeholder="Access Point password" />
                             </div>
                         </div>
                     </div>

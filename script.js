@@ -730,6 +730,12 @@ class SettingsManager {
             power_forced_on_duration: document.getElementById('power_forced_on_duration'),
             lcd_brightness_type: document.getElementById('lcd_brightness_type'),
             lcd_brightness_intensity: document.getElementById('lcd_brightness_intensity'),
+            wifi_mode: document.getElementById('wifi_mode'),
+            wifi_ssid: document.getElementById('wifi_ssid'),
+            wifi_password: document.getElementById('wifi_password'),
+            wifi_mdns: document.getElementById('wifi_mdns'),
+            wifi_ap_ssid: document.getElementById('wifi_ap_ssid'),
+            wifi_ap_password: document.getElementById('wifi_ap_password'),
             saveSettingsButton: document.getElementById('saveSettingsButton')
         };
     }
@@ -738,6 +744,7 @@ class SettingsManager {
         this.populateEngineTypes();
         this.populateCanSpeeds();
         this.loadSettings();
+        this.updateWifiFieldsState();
         this.setupEventListeners();
     }
 
@@ -796,14 +803,69 @@ class SettingsManager {
 
         // LCD Brightness
         if (this.config.data.LCD_BRIGHTNESS) {
-            this.elements.lcd_brightness_type.value = this.config.data.LCD_BRIGHTNESS.type || 'Manual';
+            this.elements.lcd_brightness_type.value = this.config.data.LCD_BRIGHTNESS.type || 'MANUAL';
             this.elements.lcd_brightness_intensity.value = this.config.data.LCD_BRIGHTNESS.intensity || '';
+        }
+
+        // WiFi
+        if (this.config.data.WIFI) {
+            this.elements.wifi_mode.value = this.config.data.WIFI.mode || 'STA';
+            this.elements.wifi_ssid.value = this.config.data.WIFI.ssid || '';
+            this.elements.wifi_password.value = this.config.data.WIFI.password || '';
+            this.elements.wifi_mdns.value = this.config.data.WIFI.mdns || '';
+            this.elements.wifi_ap_ssid.value = this.config.data.WIFI.ap_ssid || '';
+            this.elements.wifi_ap_password.value = this.config.data.WIFI.ap_password || '';
+        }
+    }
+
+    updateWifiFieldsState() {
+        const mode = this.elements.wifi_mode.value;
+
+        // Enable/disable fields based on mode
+        // When mode is AP: disable SSID and Password (STA fields)
+        // When mode is STA: disable AP SSID and AP Password (AP fields)
+        // When mode is AP+STA: enable all fields
+        // When mode is OFF: disable all fields
+
+        if (mode === 'AP') {
+            // AP mode: disable STA fields
+            this.elements.wifi_ssid.disabled = true;
+            this.elements.wifi_password.disabled = true;
+            this.elements.wifi_ap_ssid.disabled = false;
+            this.elements.wifi_ap_password.disabled = false;
+            this.elements.wifi_mdns.disabled = false;
+        } else if (mode === 'STA') {
+            // STA mode: disable AP fields
+            this.elements.wifi_ssid.disabled = false;
+            this.elements.wifi_password.disabled = false;
+            this.elements.wifi_ap_ssid.disabled = true;
+            this.elements.wifi_ap_password.disabled = true;
+            this.elements.wifi_mdns.disabled = false;
+        } else if (mode === 'AP+STA') {
+            // AP+STA mode: enable all fields
+            this.elements.wifi_ssid.disabled = false;
+            this.elements.wifi_password.disabled = false;
+            this.elements.wifi_ap_ssid.disabled = false;
+            this.elements.wifi_ap_password.disabled = false;
+            this.elements.wifi_mdns.disabled = false;
+        } else if (mode === 'OFF') {
+            // OFF mode: disable all fields
+            this.elements.wifi_ssid.disabled = true;
+            this.elements.wifi_password.disabled = true;
+            this.elements.wifi_ap_ssid.disabled = true;
+            this.elements.wifi_ap_password.disabled = true;
+            this.elements.wifi_mdns.disabled = true;
         }
     }
 
     setupEventListeners() {
         this.elements.saveSettingsButton.addEventListener('click', () => {
             this.saveSettings();
+        });
+
+        // Handle WIFI mode changes
+        this.elements.wifi_mode.addEventListener('change', () => {
+            this.updateWifiFieldsState();
         });
 
         // Handle stepper button clicks for number inputs
@@ -844,6 +906,12 @@ class SettingsManager {
         this.config.updateSetting('POWER', 'forced_on_duration', this.elements.power_forced_on_duration.value);
         this.config.updateSetting('LCD_BRIGHTNESS', 'type', this.elements.lcd_brightness_type.value);
         this.config.updateSetting('LCD_BRIGHTNESS', 'intensity', this.elements.lcd_brightness_intensity.value);
+        this.config.updateSetting('WIFI', 'mode', this.elements.wifi_mode.value);
+        this.config.updateSetting('WIFI', 'ssid', this.elements.wifi_ssid.value);
+        this.config.updateSetting('WIFI', 'password', this.elements.wifi_password.value);
+        this.config.updateSetting('WIFI', 'mdns', this.elements.wifi_mdns.value);
+        this.config.updateSetting('WIFI', 'ap_ssid', this.elements.wifi_ap_ssid.value);
+        this.config.updateSetting('WIFI', 'ap_password', this.elements.wifi_ap_password.value);
 
         // Export config
         this.config.exportConfig();

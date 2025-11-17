@@ -916,6 +916,20 @@ body {
     cursor: pointer;
 }
 
+.settings-input:disabled,
+.settings-select:disabled {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-tertiary);
+    border-color: var(--color-border);
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.settings-input:disabled:hover,
+.settings-select:disabled:hover {
+    border-color: var(--color-border);
+}
+
 .settings-actions {
     display: flex;
     gap: var(--space-md);

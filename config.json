@@ -1,4 +1,3 @@
-
 {
   "SCREEN_1": [
     {
@@ -434,21 +433,6 @@
       "posy": "0"
     }
   ],
-  "DATA_TYPES_SCREEN":{
-    "enabled": "boolean",
-    "name": "String",
-    "decimals": "integer",
-    "font1": "String",
-    "font1_color": "hexadecimal",
-    "font2": "String",
-    "font2_color": "hexadecimal",
-    "bg_color": "hexadecimal",
-    "sizex": "integer",
-    "sizey": "integer",
-    "posx": "integer",
-    "posy": "integer",
-    "data1": "command_type"
-  },
   "CAN_ID": {
     "ID1": "0x7e0"
   },
@@ -459,7 +443,7 @@
     "kbps": "500"
   },
   "UPDATE_INTERVAL": {
-    "seconds": "15"
+    "seconds": "25"
   },
   "ENGINE_CODES": {
     "engine_codes_list": "ET00, CNHC, ET01, ET02, ET03, ET04, ET05, ET06, ET07, ET08"
@@ -471,8 +455,16 @@
     "minimal_voltage": "12.1",
     "forced_on_duration": "1"
   },
+  "WIFI": {
+    "mode": "STA",
+    "ssid": "SV",
+    "password": "deadbeef",
+    "mdns": "dpfmon",
+    "ap_ssid": "DPFMonitor",
+    "ap_password": "12345678"
+  },
   "LCD_BRIGHTNESS": {
-    "type": "Manual",
+    "type": "MANUAL",
     "intensity": "6"
   },
   "CNHC": {
@@ -500,7 +492,6 @@
     "VIN2_RES": "uint64(O,P,Q,R)",
     "ENG_CODE": "0x7e0, 0x03, 0x22, 0xf1, 0xad, 0x00, 0x00, 0x00, 0x00",
     "ENG_CODE_RES": "string"
-
   },
   "ET01": {
     "SOOT_MAS_CALC": "0x7e0, 0x03, 0x22, 0x11, 0x4f, 0x55, 0x55, 0x55, 0x55",

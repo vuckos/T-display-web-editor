@@ -209,6 +209,73 @@ class ConfigManager {
         }
     }
 
+    addScreen() {
+        if (!this.data) return null;
+
+        // Find next available screen number
+        const screenKeys = this.getScreenKeys();
+        const screenNumbers = screenKeys.map(k => parseInt(k.replace('SCREEN_', ''))).filter(n => !isNaN(n));
+        const nextNumber = screenNumbers.length > 0 ? Math.max(...screenNumbers) + 1 : 1;
+        const newScreenKey = `SCREEN_${nextNumber}`;
+
+        // Create new empty screen with default cell
+        this.data[newScreenKey] = [{
+            enabled: true,
+            name: "New Cell",
+            posx: 0,
+            posy: 0,
+            sizex: 100,
+            sizey: 50,
+            bg_color: "#000000",
+            font1_color: "#00ff88",
+            font2_color: "#ffffff",
+            font1: "Font24",
+            font2: "Font16",
+            decimals: 1,
+            data1: ""
+        }];
+
+        return newScreenKey;
+    }
+
+    deleteScreen(screenKey) {
+        if (!this.data || !this.data[screenKey]) return false;
+        delete this.data[screenKey];
+        return true;
+    }
+
+    addCell(screenKey) {
+        if (!this.data || !this.data[screenKey]) return -1;
+
+        const cells = this.data[screenKey];
+        const newCell = {
+            enabled: true,
+            name: `Cell ${cells.length + 1}`,
+            posx: 0,
+            posy: 0,
+            sizex: 100,
+            sizey: 50,
+            bg_color: "#000000",
+            font1_color: "#00ff88",
+            font2_color: "#ffffff",
+            font1: "Font24",
+            font2: "Font16",
+            decimals: 1,
+            data1: ""
+        };
+
+        cells.push(newCell);
+        return cells.length - 1; // Return index of new cell
+    }
+
+    deleteCell(screenKey, cellIndex) {
+        if (!this.data || !this.data[screenKey]) return false;
+        const cells = this.data[screenKey];
+        if (cellIndex < 0 || cellIndex >= cells.length) return false;
+        cells.splice(cellIndex, 1);
+        return true;
+    }
+
     updateSetting(section, key, value) {
         if (!this.data || !this.data[section]) return;
         this.data[section][key] = value;
@@ -260,7 +327,11 @@ class UIManager {
             zoomOut: document.getElementById('zoomOut'),
             zoomReset: document.getElementById('zoomReset'),
             zoomLevel: document.getElementById('zoomLevel'),
-            clearSelection: document.getElementById('clearSelection')
+            clearSelection: document.getElementById('clearSelection'),
+            addScreen: document.getElementById('addScreen'),
+            deleteScreen: document.getElementById('deleteScreen'),
+            addCell: document.getElementById('addCell'),
+            deleteCell: document.getElementById('deleteCell')
         };
     }
 
@@ -523,6 +594,26 @@ class UIManager {
             this.onClearSelection();
         });
 
+        // Add screen button
+        this.elements.addScreen.addEventListener('click', () => {
+            this.onAddScreen();
+        });
+
+        // Delete screen button
+        this.elements.deleteScreen.addEventListener('click', () => {
+            this.onDeleteScreen();
+        });
+
+        // Add cell button
+        this.elements.addCell.addEventListener('click', () => {
+            this.onAddCell();
+        });
+
+        // Delete cell button
+        this.elements.deleteCell.addEventListener('click', () => {
+            this.onDeleteCell();
+        });
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             // Ctrl/Cmd + Plus: Zoom In
@@ -690,6 +781,147 @@ class UIManager {
 
         // Update status
         this.updateStatus('Selection cleared');
+    }
+
+    onAddScreen() {
+        const newScreenKey = this.config.addScreen();
+        if (newScreenKey) {
+            // Refresh screen dropdown
+            this.populateScreenDropdown();
+
+            // Select the new screen
+            this.elements.screenSelect.value = newScreenKey;
+            this.onScreenChange(newScreenKey);
+
+            // Select the first (default) cell
+            if (this.elements.cellSelect.options.length > 0) {
+                this.elements.cellSelect.value = 0;
+                this.elements.cellSelect.dispatchEvent(new Event('change'));
+            }
+
+            // Update status
+            this.updateStatus(`Screen ${newScreenKey.replace('SCREEN_', '')} added`, 'success');
+        } else {
+            this.updateStatus('Failed to add screen', 'error');
+        }
+    }
+
+    onDeleteScreen() {
+        const screenKey = this.elements.screenSelect.value;
+
+        if (!screenKey) {
+            this.updateStatus('No screen selected', 'error');
+            return;
+        }
+
+        // Check if this is the last screen
+        const screenKeys = this.config.getScreenKeys();
+        if (screenKeys.length <= 1) {
+            this.updateStatus('Cannot delete the last screen', 'error');
+            return;
+        }
+
+        // Confirm deletion
+        const screenName = screenKey.replace('SCREEN_', 'Screen ');
+        if (!confirm(`Are you sure you want to delete ${screenName}?`)) {
+            return;
+        }
+
+        // Delete the screen
+        if (this.config.deleteScreen(screenKey)) {
+            // Refresh screen dropdown
+            this.populateScreenDropdown();
+
+            // Select another screen (first available)
+            const remainingScreens = this.config.getScreenKeys();
+            if (remainingScreens.length > 0) {
+                this.elements.screenSelect.value = remainingScreens[0];
+                this.onScreenChange(remainingScreens[0]);
+
+                // Select first cell if available
+                if (this.elements.cellSelect.options.length > 0) {
+                    this.elements.cellSelect.value = 0;
+                    this.elements.cellSelect.dispatchEvent(new Event('change'));
+                }
+            }
+
+            // Update status
+            this.updateStatus(`${screenName} deleted`, 'success');
+        } else {
+            this.updateStatus('Failed to delete screen', 'error');
+        }
+    }
+
+    onAddCell() {
+        const screenKey = this.elements.screenSelect.value;
+
+        if (!screenKey) {
+            this.updateStatus('No screen selected', 'error');
+            return;
+        }
+
+        // Add new cell
+        const newCellIndex = this.config.addCell(screenKey);
+        if (newCellIndex >= 0) {
+            // Refresh cell dropdown
+            this.populateCellDropdown(screenKey);
+
+            // Select the new cell
+            this.elements.cellSelect.value = newCellIndex;
+            this.elements.cellSelect.dispatchEvent(new Event('change'));
+
+            // Update status
+            this.updateStatus(`New cell added`, 'success');
+        } else {
+            this.updateStatus('Failed to add cell', 'error');
+        }
+    }
+
+    onDeleteCell() {
+        const screenKey = this.elements.screenSelect.value;
+        const cellIndex = parseInt(this.elements.cellSelect.value, 10);
+
+        if (!screenKey || isNaN(cellIndex)) {
+            this.updateStatus('No cell selected', 'error');
+            return;
+        }
+
+        // Check if this is the last cell
+        const cells = this.config.getScreen(screenKey);
+        if (cells.length <= 1) {
+            this.updateStatus('Cannot delete the last cell in a screen', 'error');
+            return;
+        }
+
+        // Get cell name for confirmation
+        const cell = cells[cellIndex];
+        const cellName = cell?.name || `Cell ${cellIndex + 1}`;
+
+        // Confirm deletion
+        if (!confirm(`Are you sure you want to delete "${cellName}"?`)) {
+            return;
+        }
+
+        // Delete the cell
+        if (this.config.deleteCell(screenKey, cellIndex)) {
+            // Refresh cell dropdown
+            this.populateCellDropdown(screenKey);
+
+            // Select another cell (first available)
+            if (this.elements.cellSelect.options.length > 0) {
+                this.elements.cellSelect.value = 0;
+                this.elements.cellSelect.dispatchEvent(new Event('change'));
+            } else {
+                // No cells left, clear the display
+                this.canvas.drawScreen([]);
+                this.elements.cellDetails.innerHTML = '<p class="no-cell">No cells available</p>';
+            }
+
+            // Update status
+            this.updateStatus(`Cell "${cellName}" deleted`, 'success');
+        } else {
+            this.updateStatus('Failed to delete cell', 'error');
+        }
     }
 
     updateStatus(message, type = 'info') {

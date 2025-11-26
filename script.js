@@ -547,6 +547,18 @@ class LiveDataManager {
             zoomLevelEl.textContent = Math.round(zoomLevel * 100) + '%';
         }
     }
+
+    // Called when user navigates to Live Data page
+    onPageEnter() {
+        console.log('Live Data page entered - connecting to WebSocket');
+        this.wsManager.connect();
+    }
+
+    // Called when user navigates away from Live Data page
+    onPageLeave() {
+        console.log('Live Data page exited - disconnecting from WebSocket');
+        this.wsManager.disconnect();
+    }
 }
 
 // ============================================================================
@@ -1547,7 +1559,7 @@ class SettingsManager {
 // ============================================================================
 
 class PageNavigationManager {
-    constructor() {
+    constructor(liveDataManager = null) {
         this.currentPage = 'screen-editor';
         this.navTabs = document.querySelectorAll('.nav-tab');
         this.pages = {
@@ -1555,6 +1567,7 @@ class PageNavigationManager {
             'settings': document.getElementById('settingsPage'),
             'live-data': document.getElementById('liveDataPage')
         };
+        this.liveDataManager = liveDataManager;
     }
 
     initialize() {
@@ -1568,6 +1581,18 @@ class PageNavigationManager {
 
     switchPage(pageName) {
         if (this.currentPage === pageName) return;
+
+        // Handle Live Data page lifecycle
+        if (this.liveDataManager) {
+            // Leaving Live Data page
+            if (this.currentPage === 'live-data') {
+                this.liveDataManager.onPageLeave();
+            }
+            // Entering Live Data page
+            if (pageName === 'live-data') {
+                this.liveDataManager.onPageEnter();
+            }
+        }
 
         // Update nav tabs
         this.navTabs.forEach(tab => {
@@ -1628,12 +1653,14 @@ async function initializeApp() {
         const canvasManager = new CanvasManager('myCanvas');
         const uiManager = new UIManager(configManager, canvasManager);
         const settingsManager = new SettingsManager(configManager);
-        const pageNavManager = new PageNavigationManager();
 
-        // Initialize Live Data managers
+        // Initialize Live Data managers (before PageNavigationManager)
         const liveCanvasManager = new CanvasManager('liveCanvas');
         const wsManager = new WebSocketManager();
         const liveDataManager = new LiveDataManager(liveCanvasManager, wsManager);
+
+        // Initialize PageNavigationManager with liveDataManager reference
+        const pageNavManager = new PageNavigationManager(liveDataManager);
 
         // Initialize UI components
         uiManager.initialize();

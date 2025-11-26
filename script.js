@@ -401,17 +401,60 @@ class LiveDataManager {
         const w = parseInt(cell.sizex, 10) || 0;
         const h = parseInt(cell.sizey, 10) || 0;
 
+        // Parse colors - handle both string and numeric formats
+        // Remove # or 0x prefix before parsing
+        let bg, fg;
+        if (typeof cell.bg_color === 'string') {
+            const bgHex = cell.bg_color.replace(/^(#|0x)/i, '');
+            bg = parseInt(bgHex, 16);
+            if (isNaN(bg)) bg = 0;
+        } else {
+            bg = cell.bg_color || 0;
+        }
+
+        if (typeof cell.font1_color === 'string') {
+            const fgHex = cell.font1_color.replace(/^(#|0x)/i, '');
+            fg = parseInt(fgHex, 16);
+            if (isNaN(fg)) fg = 0xFFFF;
+        } else {
+            fg = cell.font1_color || 0xFFFF;
+        }
+
         // Convert RGB565 colors to RGB888
-        const bgColor = rgb565ToRgb888(parseInt(cell.bg_color, 16) || 0);
-        const fgColor = rgb565ToRgb888(parseInt(cell.font1_color, 16) || 0xFFFF);
+        const bgColor = rgb565ToRgb888(bg);
+        const fgColor = rgb565ToRgb888(fg);
+
+        // Debug logging for first few cells
+        if (this.currentCells.indexOf(cell) < 2) {
+            console.log('Cell:', cell.name, {
+                bg_color_raw: cell.bg_color,
+                font1_color_raw: cell.font1_color,
+                bg_rgb565: bg.toString(16),
+                fg_rgb565: fg.toString(16),
+                bg_rgb888: '#' + bgColor.toString(16).padStart(6, '0'),
+                fg_rgb888: '#' + fgColor.toString(16).padStart(6, '0')
+            });
+        }
 
         // Draw background rectangle
         ctx.fillStyle = '#' + bgColor.toString(16).padStart(6, '0');
         ctx.fillRect(px, py, w, h);
 
+        // Set text color
+        ctx.fillStyle = '#' + fgColor.toString(16).padStart(6, '0');
+
+        // Draw cell name at the top
+        const cellName = cell.name || '';
+        if (cellName && h > 20) {
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(cellName, px + 3, py + 3);
+        }
+
         // Determine display value
         let displayValue = '';
-        if (cell.str_value !== undefined && cell.str_value !== null) {
+        if (cell.str_value !== undefined && cell.str_value !== null && cell.str_value !== '') {
             displayValue = cell.str_value;
         } else if (cell.value !== undefined && cell.value !== null) {
             const decimals = parseInt(cell.decimalPlaces, 10) || 0;
@@ -420,12 +463,15 @@ class LiveDataManager {
 
         // Draw value text with adaptive font sizing
         if (displayValue && w > 0 && h > 0) {
-            const fontSize = Math.min(w / 4, h / 2, 24);
-            ctx.font = `bold ${fontSize}px monospace`;
-            ctx.fillStyle = '#' + fgColor.toString(16).padStart(6, '0');
+            // Calculate font size based on cell dimensions
+            const valueFontSize = Math.min(w / 4, h / 2.5, 24);
+            ctx.font = `bold ${valueFontSize}px monospace`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(displayValue, px + w / 2, py + h / 2);
+
+            // Position value in center or lower half if name is present
+            const valueY = cellName && h > 30 ? py + h * 0.6 : py + h / 2;
+            ctx.fillText(displayValue, px + w / 2, valueY);
         }
 
         // Draw red border if data is invalid

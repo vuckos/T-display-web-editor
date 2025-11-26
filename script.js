@@ -171,6 +171,339 @@ class CanvasManager {
 }
 
 // ============================================================================
+// WebSocket Manager
+// ============================================================================
+
+class WebSocketManager {
+    constructor() {
+        this.ws = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 2000; // 2 seconds
+        this.messageCallback = null;
+        this.statusCallback = null;
+        this.messageCount = 0;
+        this.lastMessageTime = null;
+        this.shouldReconnect = false;
+    }
+
+    connect() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            console.log('WebSocket already connected');
+            return;
+        }
+
+        // Auto-detect protocol (ws:// or wss://)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+        this.updateStatus('connecting', 'Connecting to ' + wsUrl + '...');
+
+        try {
+            this.ws = new WebSocket(wsUrl);
+            this.shouldReconnect = true;
+
+            this.ws.onopen = (event) => {
+                console.log('WebSocket connected:', event);
+                this.updateStatus('connected', 'Connected - Waiting for data...');
+                this.reconnectAttempts = 0;
+            };
+
+            this.ws.onmessage = (event) => {
+                console.log('WebSocket message received:', event.data);
+                this.messageCount++;
+                this.lastMessageTime = Date.now();
+
+                try {
+                    const data = JSON.parse(event.data);
+                    if (this.messageCallback) {
+                        this.messageCallback(data);
+                    }
+                    this.updateStatus('connected', 'Connected - Receiving updates');
+                } catch (e) {
+                    console.error('Error parsing JSON:', e);
+                    this.updateStatus('error', 'Error parsing data: ' + e.message);
+                }
+            };
+
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.updateStatus('error', 'Connection error');
+            };
+
+            this.ws.onclose = (event) => {
+                console.log('WebSocket closed:', event);
+                this.updateStatus('disconnected', 'Disconnected (Code: ' + event.code + ')');
+
+                // Auto-reconnect if enabled and not exceeded max attempts
+                if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    setTimeout(() => {
+                        console.log(`Reconnecting... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                        this.connect();
+                    }, this.reconnectDelay);
+                }
+            };
+        } catch (e) {
+            console.error('Error creating WebSocket:', e);
+            this.updateStatus('error', 'Connection failed: ' + e.message);
+        }
+    }
+
+    disconnect() {
+        this.shouldReconnect = false;
+        this.reconnectAttempts = this.maxReconnectAttempts; // Prevent auto-reconnect
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+            this.updateStatus('disconnected', 'Manually disconnected');
+        }
+    }
+
+    onMessage(callback) {
+        this.messageCallback = callback;
+    }
+
+    onStatusChange(callback) {
+        this.statusCallback = callback;
+    }
+
+    updateStatus(status, message) {
+        if (this.statusCallback) {
+            this.statusCallback(status, message);
+        }
+    }
+
+    getMessageCount() {
+        return this.messageCount;
+    }
+
+    getLastMessageTime() {
+        return this.lastMessageTime;
+    }
+}
+
+// ============================================================================
+// Live Data Manager
+// ============================================================================
+
+class LiveDataManager {
+    constructor(canvasManager, wsManager) {
+        this.canvasManager = canvasManager;
+        this.wsManager = wsManager;
+        this.currentCells = [];
+        this.updateRateWindow = [];
+        this.updateRateWindowSize = 10; // Track last 10 messages for rate calculation
+    }
+
+    initialize() {
+        // Setup WebSocket callbacks
+        this.wsManager.onMessage((data) => this.handleLiveData(data));
+        this.wsManager.onStatusChange((status, message) => this.updateConnectionUI(status, message));
+
+        // Setup event listeners
+        this.setupEventListeners();
+
+        // Initialize UI
+        this.updateStatistics();
+    }
+
+    setupEventListeners() {
+        // Connect button
+        const connectBtn = document.getElementById('connectButton');
+        if (connectBtn) {
+            connectBtn.addEventListener('click', () => {
+                this.wsManager.connect();
+            });
+        }
+
+        // Disconnect button
+        const disconnectBtn = document.getElementById('disconnectButton');
+        if (disconnectBtn) {
+            disconnectBtn.addEventListener('click', () => {
+                this.wsManager.disconnect();
+            });
+        }
+
+        // Zoom controls
+        const liveZoomIn = document.getElementById('liveZoomIn');
+        if (liveZoomIn) {
+            liveZoomIn.addEventListener('click', () => {
+                const newZoom = this.canvasManager.zoomIn();
+                this.updateZoomDisplay(newZoom);
+            });
+        }
+
+        const liveZoomOut = document.getElementById('liveZoomOut');
+        if (liveZoomOut) {
+            liveZoomOut.addEventListener('click', () => {
+                const newZoom = this.canvasManager.zoomOut();
+                this.updateZoomDisplay(newZoom);
+            });
+        }
+
+        const liveZoomReset = document.getElementById('liveZoomReset');
+        if (liveZoomReset) {
+            liveZoomReset.addEventListener('click', () => {
+                const newZoom = this.canvasManager.resetZoom();
+                this.updateZoomDisplay(newZoom);
+            });
+        }
+    }
+
+    handleLiveData(data) {
+        // Validate data structure
+        if (!data.cells || !Array.isArray(data.cells)) {
+            console.warn('Invalid data format: missing cells array');
+            return;
+        }
+
+        // Filter enabled cells only
+        this.currentCells = data.cells.filter(cell => cell.enabled);
+
+        // Update canvas
+        this.drawLiveCells();
+
+        // Update statistics
+        this.updateStatistics();
+
+        // Update last update time
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString();
+        const lastUpdateEl = document.getElementById('lastUpdateTime');
+        if (lastUpdateEl) {
+            lastUpdateEl.textContent = 'Last update: ' + timeStr;
+        }
+
+        // Track update rate
+        this.updateRateWindow.push(Date.now());
+        if (this.updateRateWindow.length > this.updateRateWindowSize) {
+            this.updateRateWindow.shift();
+        }
+    }
+
+    drawLiveCells() {
+        // Clear canvas
+        this.canvasManager.clear();
+
+        // Draw each enabled cell
+        this.currentCells.forEach(cell => {
+            this.drawLiveCell(cell);
+        });
+    }
+
+    drawLiveCell(cell) {
+        const ctx = this.canvasManager.ctx;
+
+        // Parse position and size
+        const px = parseInt(cell.posx, 10) || 0;
+        const py = parseInt(cell.posy, 10) || 0;
+        const w = parseInt(cell.sizex, 10) || 0;
+        const h = parseInt(cell.sizey, 10) || 0;
+
+        // Convert RGB565 colors to RGB888
+        const bgColor = rgb565ToRgb888(parseInt(cell.bg_color, 16) || 0);
+        const fgColor = rgb565ToRgb888(parseInt(cell.font1_color, 16) || 0xFFFF);
+
+        // Draw background rectangle
+        ctx.fillStyle = '#' + bgColor.toString(16).padStart(6, '0');
+        ctx.fillRect(px, py, w, h);
+
+        // Determine display value
+        let displayValue = '';
+        if (cell.str_value !== undefined && cell.str_value !== null) {
+            displayValue = cell.str_value;
+        } else if (cell.value !== undefined && cell.value !== null) {
+            const decimals = parseInt(cell.decimalPlaces, 10) || 0;
+            displayValue = cell.value.toFixed(decimals);
+        }
+
+        // Draw value text with adaptive font sizing
+        if (displayValue && w > 0 && h > 0) {
+            const fontSize = Math.min(w / 4, h / 2, 24);
+            ctx.font = `bold ${fontSize}px monospace`;
+            ctx.fillStyle = '#' + fgColor.toString(16).padStart(6, '0');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(displayValue, px + w / 2, py + h / 2);
+        }
+
+        // Draw red border if data is invalid
+        if (!cell.data1_valid) {
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px, py, w, h);
+        }
+    }
+
+    updateConnectionUI(status, message) {
+        const statusIndicator = document.getElementById('statusIndicator');
+        const wsStatusText = document.getElementById('wsStatusText');
+
+        if (statusIndicator) {
+            // Remove all status classes
+            statusIndicator.classList.remove('connected', 'connecting', 'disconnected');
+
+            // Add appropriate class based on status
+            if (status === 'connected') {
+                statusIndicator.classList.add('connected');
+            } else if (status === 'connecting') {
+                statusIndicator.classList.add('connecting');
+            }
+            // Default is disconnected (red)
+        }
+
+        if (wsStatusText) {
+            wsStatusText.textContent = message;
+        }
+    }
+
+    updateStatistics() {
+        // Update messages received
+        const msgCountEl = document.getElementById('statMessagesReceived');
+        if (msgCountEl) {
+            msgCountEl.textContent = this.wsManager.getMessageCount();
+        }
+
+        // Update active cells count
+        const activeCellsEl = document.getElementById('statActiveCells');
+        if (activeCellsEl) {
+            activeCellsEl.textContent = this.currentCells.length;
+        }
+
+        // Update update rate (Hz)
+        const updateRateEl = document.getElementById('statUpdateRate');
+        if (updateRateEl) {
+            const rate = this.calculateUpdateRate();
+            updateRateEl.textContent = rate.toFixed(2) + ' Hz';
+        }
+    }
+
+    calculateUpdateRate() {
+        if (this.updateRateWindow.length < 2) {
+            return 0;
+        }
+
+        const timeSpan = this.updateRateWindow[this.updateRateWindow.length - 1] - this.updateRateWindow[0];
+        const messageCount = this.updateRateWindow.length - 1;
+
+        if (timeSpan === 0) {
+            return 0;
+        }
+
+        // Convert to Hz (messages per second)
+        return (messageCount / timeSpan) * 1000;
+    }
+
+    updateZoomDisplay(zoomLevel) {
+        const zoomLevelEl = document.getElementById('liveZoomLevel');
+        if (zoomLevelEl) {
+            zoomLevelEl.textContent = Math.round(zoomLevel * 100) + '%';
+        }
+    }
+}
+
+// ============================================================================
 // Config Manager
 // ============================================================================
 
@@ -220,7 +553,7 @@ class ConfigManager {
 
         // Create new empty screen with default cell
         this.data[newScreenKey] = [{
-            enabled: true,
+            enabled: "true",
             name: "New Cell",
             posx: 0,
             posy: 0,
@@ -249,7 +582,7 @@ class ConfigManager {
 
         const cells = this.data[screenKey];
         const newCell = {
-            enabled: true,
+            enabled: "true",
             name: `Cell ${cells.length + 1}`,
             posx: 0,
             posy: 0,
@@ -448,6 +781,7 @@ class UIManager {
                 }
                 // Render dropdown for boolean fields
                 else if (dataType === 'boolean') {
+                    const boolValue = String(cell[key]); // Convert to string for comparison
                     html += `
                         <div class="property-item">
                             <label for="prop-${key}">${label}</label>
@@ -456,8 +790,8 @@ class UIManager {
                                 class="property-select"
                                 data-property="${key}"
                             >
-                                <option value="true" ${cell[key] === 'true' ? 'selected' : ''}>true</option>
-                                <option value="false" ${cell[key] === 'false' ? 'selected' : ''}>false</option>
+                                <option value="true" ${boolValue === 'true' ? 'selected' : ''}>true</option>
+                                <option value="false" ${boolValue === 'false' ? 'selected' : ''}>false</option>
                             </select>
                         </div>
                     `;
@@ -1172,7 +1506,8 @@ class PageNavigationManager {
         this.navTabs = document.querySelectorAll('.nav-tab');
         this.pages = {
             'screen-editor': document.getElementById('screenEditorPage'),
-            'settings': document.getElementById('settingsPage')
+            'settings': document.getElementById('settingsPage'),
+            'live-data': document.getElementById('liveDataPage')
         };
     }
 
@@ -1211,7 +1546,8 @@ class PageNavigationManager {
         // Update status bar
         const statusText = document.getElementById('statusText');
         if (statusText) {
-            const pageTitle = pageName === 'screen-editor' ? 'Screen Editor' : 'Settings';
+            const pageTitle = pageName === 'screen-editor' ? 'Screen Editor' :
+                             pageName === 'settings' ? 'Settings' : 'Live Data';
             statusText.textContent = `Switched to ${pageTitle}`;
             statusText.className = 'status-info';
         }
@@ -1248,10 +1584,16 @@ async function initializeApp() {
         const settingsManager = new SettingsManager(configManager);
         const pageNavManager = new PageNavigationManager();
 
+        // Initialize Live Data managers
+        const liveCanvasManager = new CanvasManager('liveCanvas');
+        const wsManager = new WebSocketManager();
+        const liveDataManager = new LiveDataManager(liveCanvasManager, wsManager);
+
         // Initialize UI components
         uiManager.initialize();
         settingsManager.initialize();
         pageNavManager.initialize();
+        liveDataManager.initialize();
 
         console.log('T-Display Web Editor initialized successfully');
     } catch (error) {

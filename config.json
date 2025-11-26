@@ -433,6 +433,21 @@
       "posy": "0"
     }
   ],
+  "DATA_TYPES_SCREEN": {
+    "enabled": "boolean",
+    "name": "String",
+    "decimals": "integer",
+    "font1": "String",
+    "font1_color": "hexadecimal",
+    "font2": "String",
+    "font2_color": "hexadecimal",
+    "bg_color": "hexadecimal",
+    "sizex": "integer",
+    "sizey": "integer",
+    "posx": "integer",
+    "posy": "integer",
+    "data1": "command_type"
+  },
   "CAN_ID": {
     "ID1": "0x7e0"
   },
@@ -446,7 +461,7 @@
     "seconds": "25"
   },
   "ENGINE_CODES": {
-    "engine_codes_list": "ET00, CNHC, ET01, ET02, ET03, ET04, ET05, ET06, ET07, ET08"
+    "engine_codes_list": "CNHC, ET01, ET02, ET03"
   },
   "CURRENT_ENGINE": {
     "engine_type": "CNHC"

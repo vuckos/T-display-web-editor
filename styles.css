@@ -1007,3 +1007,99 @@ body {
     white-space: nowrap;
     border-width: 0;
 }
+
+/* ============================================================================
+   Live Data Page - Connection Status
+   ============================================================================ */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-error);
+    flex-shrink: 0;
+}
+
+.status-indicator.connected {
+    background: var(--color-success);
+    box-shadow: 0 0 10px var(--color-success);
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.connecting {
+    background: var(--color-warning);
+    animation: blink 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes blink {
+    0%, 50%, 100% {
+        opacity: 1;
+    }
+    25%, 75% {
+        opacity: 0.3;
+    }
+}
+
+.connection-info {
+    margin-top: var(--space-xs);
+}
+
+.connection-info .text-secondary {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.button-group {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.button-group .btn {
+    flex: 1;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    font-family: var(--font-mono);
+}

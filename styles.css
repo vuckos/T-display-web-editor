@@ -90,7 +90,7 @@ body {
 .app-header {
     background: var(--color-bg-secondary);
     border-bottom: 1px solid var(--color-border);
-    padding: var(--space-lg) var(--space-xl);
+    padding: var(--space-sm) var(--space-lg);
     box-shadow: var(--shadow-md);
     position: sticky;
     top: 0;
@@ -103,13 +103,13 @@ body {
 }
 
 .app-header h1 {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-text-primary);
     display: flex;
     align-items: center;
-    gap: var(--space-md);
-    margin-bottom: var(--space-xs);
+    gap: var(--space-sm);
+    margin-bottom: 0;
 }
 
 .logo-icon {
@@ -118,28 +118,28 @@ body {
 }
 
 .subtitle {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: var(--color-text-secondary);
-    margin-left: 2.5rem;
+    margin-left: 2rem;
 }
 
 /* Navigation Tabs */
 .nav-tabs {
     display: flex;
-    gap: var(--space-sm);
-    margin-top: var(--space-lg);
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
 }
 
 .nav-tab {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-lg);
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-md);
     background: transparent;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text-secondary);
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 500;
     font-family: var(--font-sans);
     cursor: pointer;
@@ -163,15 +163,16 @@ body {
 }
 
 .status-bar {
-    margin-top: var(--space-md);
-    padding: var(--space-sm) var(--space-md);
+    margin-top: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
     background: var(--color-bg-tertiary);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     display: inline-block;
+    min-height: 1.5rem;
 }
 
 .status-bar span {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-family: var(--font-mono);
 }
 
@@ -205,6 +206,22 @@ body {
     .app-main {
         grid-template-columns: 1fr;
         gap: var(--space-lg);
+    }
+
+    /* Make canvas sticky on mobile so it stays visible while scrolling cell properties */
+    .canvas-section {
+        position: sticky;
+        top: var(--space-xl);
+        z-index: 10;
+        background: var(--color-bg-primary);
+        padding-top: var(--space-md);
+        padding-bottom: var(--space-md);
+    }
+
+    /* Ensure editor section can scroll independently */
+    .editor-section {
+        position: relative;
+        z-index: 1;
     }
 }
 

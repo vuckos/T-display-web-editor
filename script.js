@@ -1034,7 +1034,6 @@ class UIManager {
         this.populateCellDropdown(screenKey);
         this.canvas.drawScreen(this.config.getScreen(screenKey));
         this.elements.cellDetails.innerHTML = '<p class="no-cell">Select a cell to edit</p>';
-        this.updateStatus(`Switched to ${screenKey.replace('SCREEN_', 'Screen ')}`);
     }
 
     onCellChange(screenKey, cellIndex) {
@@ -1042,7 +1041,6 @@ class UIManager {
         this.canvas.drawScreen(cells);
         this.canvas.highlightCell(cells, cellIndex);
         this.renderCellProperties(screenKey, cellIndex);
-        this.updateStatus(`Editing: ${cells[cellIndex]?.name || 'Cell ' + (cellIndex + 1)}`);
     }
 
     onCanvasClick(e) {
@@ -1063,7 +1061,6 @@ class UIManager {
         if (hitIndex >= 0) {
             this.elements.cellSelect.value = hitIndex;
             this.elements.cellSelect.dispatchEvent(new Event('change'));
-            this.updateStatus(`Selected: ${cells[hitIndex]?.name || 'Cell ' + (hitIndex + 1)}`);
         }
     }
 
@@ -1114,10 +1111,9 @@ class UIManager {
         this.config.exportConfig();
         this.updateStatus('Configuration downloaded!', 'success');
 
-        // Reset status after 3 seconds
+        // Clear status after 3 seconds
         setTimeout(() => {
-            const cells = this.config.getScreen(screenKey);
-            this.updateStatus(`Editing: ${cells[cellIndex]?.name || 'Cell ' + (cellIndex + 1)}`);
+            this.updateStatus('', '');
         }, 3000);
     }
 
@@ -1125,21 +1121,18 @@ class UIManager {
         this.canvas.zoomIn();
         this.updateZoomDisplay();
         this.updateZoomButtons();
-        this.updateStatus(`Zoomed to ${this.canvas.getZoomPercent()}%`);
     }
 
     onZoomOut() {
         this.canvas.zoomOut();
         this.updateZoomDisplay();
         this.updateZoomButtons();
-        this.updateStatus(`Zoomed to ${this.canvas.getZoomPercent()}%`);
     }
 
     onZoomReset() {
         this.canvas.resetZoom();
         this.updateZoomDisplay();
         this.updateZoomButtons();
-        this.updateStatus('Zoom reset to 100%');
     }
 
     updateZoomDisplay() {
@@ -1170,9 +1163,6 @@ class UIManager {
 
         // Clear the properties panel
         this.elements.cellDetails.innerHTML = '<p class="no-cell">Select a cell to edit its properties</p>';
-
-        // Update status
-        this.updateStatus('Selection cleared');
     }
 
     onAddScreen() {
@@ -1613,15 +1603,6 @@ class PageNavigationManager {
         });
 
         this.currentPage = pageName;
-
-        // Update status bar
-        const statusText = document.getElementById('statusText');
-        if (statusText) {
-            const pageTitle = pageName === 'screen-editor' ? 'Screen Editor' :
-                             pageName === 'settings' ? 'Settings' : 'Live Data';
-            statusText.textContent = `Switched to ${pageTitle}`;
-            statusText.className = 'status-info';
-        }
     }
 }
 
@@ -1667,6 +1648,12 @@ async function initializeApp() {
         settingsManager.initialize();
         pageNavManager.initialize();
         liveDataManager.initialize();
+
+        // Clear loading message
+        if (statusText) {
+            statusText.textContent = '';
+            statusText.className = '';
+        }
 
         console.log('T-Display Web Editor initialized successfully');
     } catch (error) {

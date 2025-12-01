@@ -1028,6 +1028,65 @@ class UIManager {
                 this.onClearSelection();
             }
         });
+
+        // Canvas resize handle
+        const resizeHandle = document.getElementById('canvasResizeHandle');
+        const canvasWrapper = document.querySelector('.canvas-wrapper');
+        if (resizeHandle && canvasWrapper) {
+            let isResizing = false;
+            let startY = 0;
+            let startHeight = 0;
+
+            const startResize = (clientY) => {
+                isResizing = true;
+                startY = clientY;
+                startHeight = canvasWrapper.offsetHeight;
+                document.body.style.cursor = 'ns-resize';
+                document.body.style.userSelect = 'none';
+            };
+
+            const doResize = (clientY) => {
+                if (!isResizing) return;
+                const deltaY = clientY - startY;
+                const newHeight = Math.max(200, startHeight + deltaY);
+                canvasWrapper.style.height = newHeight + 'px';
+                canvasWrapper.style.minHeight = newHeight + 'px';
+            };
+
+            const stopResize = () => {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            };
+
+            // Mouse events
+            resizeHandle.addEventListener('mousedown', (e) => {
+                startResize(e.clientY);
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                doResize(e.clientY);
+            });
+
+            document.addEventListener('mouseup', stopResize);
+
+            // Touch events for mobile
+            resizeHandle.addEventListener('touchstart', (e) => {
+                startResize(e.touches[0].clientY);
+                e.preventDefault();
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                if (isResizing && e.touches.length > 0) {
+                    doResize(e.touches[0].clientY);
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend', stopResize);
+        }
     }
 
     onScreenChange(screenKey) {

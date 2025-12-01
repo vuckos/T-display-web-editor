@@ -16,35 +16,31 @@
                     <rect x="2" y="3" width="20" height="14" rx="2" stroke-width="2"/>
                     <line x1="2" y1="20" x2="22" y2="20" stroke-width="2" stroke-linecap="round"/>
                 </svg>
-                T-Display Editor
+                DPF Monitor
             </h1>
-            <p class="subtitle">LCD Configuration Tool - 320×170px</p>
-        </div>
-        <nav class="nav-tabs">
-            <button class="nav-tab active" data-page="screen-editor">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
-                    <line x1="9" y1="9" x2="15" y2="9" stroke-width="2"/>
-                    <line x1="9" y1="15" x2="15" y2="15" stroke-width="2"/>
-                </svg>
-                Screen Editor
-            </button>
-            <button class="nav-tab" data-page="settings">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <circle cx="12" cy="12" r="3" stroke-width="2"/>
-                    <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                Settings
-            </button>
-            <button class="nav-tab" data-page="live-data">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-width="2"/>
-                </svg>
-                Live Data
-            </button>
-        </nav>
-        <div class="status-bar">
-            <span id="statusText" class="status-info">Ready</span>
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-page="screen-editor">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                        <line x1="9" y1="9" x2="15" y2="9" stroke-width="2"/>
+                        <line x1="9" y1="15" x2="15" y2="15" stroke-width="2"/>
+                    </svg>
+                    Screen Editor
+                </button>
+                <button class="nav-tab" data-page="settings">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                        <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Settings
+                </button>
+                <button class="nav-tab" data-page="live-data">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-width="2"/>
+                    </svg>
+                    Live Data
+                </button>
+            </nav>
         </div>
     </header>
 
@@ -86,6 +82,13 @@
                 <div class="canvas-wrapper">
                     <canvas id="myCanvas" width="320" height="170"></canvas>
                 </div>
+            </div>
+            <div class="resize-handle" id="canvasResizeHandle" title="Drag to resize">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="4" y1="12" x2="20" y2="12" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="4" y1="6" x2="20" y2="6" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="4" y1="18" x2="20" y2="18" stroke-width="2" stroke-linecap="round"/>
+                </svg>
             </div>
         </section>
 
